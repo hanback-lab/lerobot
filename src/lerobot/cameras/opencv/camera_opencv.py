@@ -21,6 +21,7 @@ import math
 import os
 import platform
 import time
+import json
 from pathlib import Path
 from threading import Event, Lock, Thread
 from typing import Any
@@ -115,6 +116,17 @@ class OpenCVCamera(Camera):
         self.fps = config.fps
         self.color_mode = config.color_mode
         self.warmup_s = config.warmup_s
+
+        self.camera_calibration_flag = False
+        if config.calibration_config is not None:
+            with open(config.calibration_config, "r") as f:
+                calibration_data = json.load(f)
+            
+            self.mtx = np.array(calibration_data["camera_matrix"])
+            self.dist_coeff = np.array(calibration_data["dist_coeff"])
+            self.new_mtx = np.array(calibration_data["new_camera_matrix"])
+            self.roi = tuple(calibration_data["roi"])
+            self.camera_calibration_flag = True
 
         self.videocapture: cv2.VideoCapture | None = None
 
@@ -362,13 +374,18 @@ class OpenCVCamera(Camera):
 
         if c != 3:
             raise RuntimeError(f"{self} frame channels={c} do not match expected 3 channels (RGB/BGR).")
-
+            
         processed_image = image
         if requested_color_mode == ColorMode.RGB:
             processed_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         if self.rotation in [cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_90_COUNTERCLOCKWISE, cv2.ROTATE_180]:
             processed_image = cv2.rotate(processed_image, self.rotation)
+
+        if self.camera_calibration_flag :
+            processed_image = cv2.undistort(processed_image, self.mtx, self.dist_coeff, None, self.new_mtx)
+            x, y, w, h = self.roi
+            processed_image = processed_image[y:y+h, x:x+w]
 
         return processed_image
 

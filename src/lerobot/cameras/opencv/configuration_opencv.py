@@ -14,6 +14,7 @@
 
 from dataclasses import dataclass
 from pathlib import Path
+import os
 
 from ..configs import CameraConfig, ColorMode, Cv2Rotation
 
@@ -25,7 +26,68 @@ class OpenCVCameraConfig(CameraConfig):
 
     This class provides configuration options for cameras accessed through OpenCV,
     supporting both physical camera devices and video files. It includes settings
-    for resolution, frame rate, color mode, and image rotation.
+    for resolution, frame rate, color mode, image rotation, and camera calibration
+    setting.
+
+    More about camera calibration setting:
+    A camera calibration setting refers to a file that contains the 
+    information required for calibration. The configuration file is in JSON format. 
+    After loading this configuration file, the camera calibration process is 
+    performed by referencing the specified properties. Additionally, the ROI property 
+    allows for specific camera range restrictions.
+
+    Format of camera calibration setting:
+    {
+        "camera_matrix": [
+            [
+                fx,
+                0.0,
+                cx
+            ],
+            [
+                0.0,
+                fy,
+                cy
+            ],
+            [
+                0.0,
+                0.0,
+                1.0
+            ]
+        ],
+        "dist_coeff": [
+            [
+                k1,
+                k2,
+                p1,
+                p2,
+                k3
+            ]
+        ],
+        "new_camera_matrix": [
+            [
+                fx_new,
+                0.0,
+                cx_new
+            ],
+            [
+                0.0,
+                fy_new,
+                cy_new
+            ],
+            [
+                0.0,
+                0.0,
+                1.0
+                ]
+        ],
+        "roi": [
+            0,
+            0,
+            639,
+            479
+        ]
+    }
 
     Example configurations:
     ```python
@@ -35,6 +97,9 @@ class OpenCVCameraConfig(CameraConfig):
 
     # Advanced configurations
     OpenCVCameraConfig(128422271347, 30, 640, 480, rotation=Cv2Rotation.ROTATE_90)     # With 90° rotation
+
+    # Configuration camera calibration
+    OpenCVCameraConfig(/dev/video0, 30, 640, 480, calibration_config=/home/user/calibration.json)
     ```
 
     Attributes:
@@ -46,6 +111,7 @@ class OpenCVCameraConfig(CameraConfig):
         color_mode: Color mode for image output (RGB or BGR). Defaults to RGB.
         rotation: Image rotation setting (0°, 90°, 180°, or 270°). Defaults to no rotation.
         warmup_s: Time reading frames before returning from connect (in seconds)
+        calibration_config : Camera calibration setting. Defaults to None.
 
     Note:
         - Only 3-channel color output (RGB/BGR) is currently supported.
@@ -55,7 +121,8 @@ class OpenCVCameraConfig(CameraConfig):
     color_mode: ColorMode = ColorMode.RGB
     rotation: Cv2Rotation = Cv2Rotation.NO_ROTATION
     warmup_s: int = 1
-
+    calibration_config : int | Path = None 
+    
     def __post_init__(self):
         if self.color_mode not in (ColorMode.RGB, ColorMode.BGR):
             raise ValueError(
@@ -71,3 +138,10 @@ class OpenCVCameraConfig(CameraConfig):
             raise ValueError(
                 f"`rotation` is expected to be in {(Cv2Rotation.NO_ROTATION, Cv2Rotation.ROTATE_90, Cv2Rotation.ROTATE_180, Cv2Rotation.ROTATE_270)}, but {self.rotation} is provided."
             )
+        
+        if self.calibration_config is not None:
+            if not os.path.isfile(self.calibration_config) or not os.path.exists(self.calibration_config):
+                raise ValueError(
+                    f"The camera calibration file isn't in {self.calibration_config}. Please check the path."
+                )
+
