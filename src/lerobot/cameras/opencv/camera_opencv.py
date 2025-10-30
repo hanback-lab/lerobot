@@ -125,7 +125,6 @@ class OpenCVCamera(Camera):
             self.mtx = np.array(calibration_data["camera_matrix"])
             self.dist_coeff = np.array(calibration_data["dist_coeff"])
             self.new_mtx = np.array(calibration_data["new_camera_matrix"])
-            self.roi = tuple(calibration_data["roi"])
             self.camera_calibration_flag = True
 
         self.videocapture: cv2.VideoCapture | None = None
@@ -172,6 +171,7 @@ class OpenCVCamera(Camera):
         cv2.setNumThreads(1)
 
         self.videocapture = cv2.VideoCapture(self.index_or_path, self.backend)
+        print(self.videocapture)
 
         if not self.videocapture.isOpened():
             self.videocapture.release()
@@ -180,7 +180,7 @@ class OpenCVCamera(Camera):
                 f"Failed to open {self}.Run `lerobot-find-cameras opencv` to find available cameras."
             )
 
-        self._configure_capture_settings()
+        #self._configure_capture_settings()
 
         if warmup:
             start_time = time.time()
@@ -233,6 +233,7 @@ class OpenCVCamera(Camera):
 
         success = self.videocapture.set(cv2.CAP_PROP_FPS, float(self.fps))
         actual_fps = self.videocapture.get(cv2.CAP_PROP_FPS)
+        return
         # Use math.isclose for robust float comparison
         if not success or not math.isclose(self.fps, actual_fps, rel_tol=1e-3):
             raise RuntimeError(f"{self} failed to set fps={self.fps} ({actual_fps=}).")
@@ -244,6 +245,7 @@ class OpenCVCamera(Camera):
         height_success = self.videocapture.set(cv2.CAP_PROP_FRAME_HEIGHT, float(self.capture_height))
 
         actual_width = int(round(self.videocapture.get(cv2.CAP_PROP_FRAME_WIDTH)))
+        return
         if not width_success or self.capture_width != actual_width:
             raise RuntimeError(
                 f"{self} failed to set capture_width={self.capture_width} ({actual_width=}, {width_success=})."
@@ -384,8 +386,6 @@ class OpenCVCamera(Camera):
 
         if self.camera_calibration_flag :
             processed_image = cv2.undistort(processed_image, self.mtx, self.dist_coeff, None, self.new_mtx)
-            x, y, w, h = self.roi
-            processed_image = processed_image[y:y+h, x:x+w]
 
         return processed_image
 

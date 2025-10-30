@@ -35,9 +35,9 @@ class Cv2Rotation(int, Enum):
 
 @dataclass(kw_only=True)
 class CameraConfig(draccus.ChoiceRegistry, abc.ABC):
-    fps: int | None = None
-    width: int | None = None
-    height: int | None = None
+    fps: int | None = 30
+    width: int | None = 640
+    height: int | None = 480
 
     @property
     def type(self) -> str:
